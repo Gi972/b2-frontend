@@ -4,7 +4,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   try {
     const url = new URL(context.request.url);
 
-    // Bypass pour assets/statics afin d'éviter des 500 inutiles
+    // Bypass static assets/files (avoid pointless 500s on favicon, etc.)
     if (
       url.pathname.startsWith("/_astro/") ||
       url.pathname.startsWith("/assets/") ||
