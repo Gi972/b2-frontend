@@ -1,0 +1,81 @@
+---
+const hostHeader =
+  Astro.request.headers.get("x-original-host") ||
+  Astro.request.headers.get("host") ||
+  "";
+
+const base = import.meta.env.PUBLIC_API_BASE || "(undefined)";
+
+let resolveStatus = 0;
+let resolveText = "";
+let resolveJson: any = null;
+
+try {
+  const res = await fetch(
+    `${import.meta.env.PUBLIC_API_BASE}/tenants/resolve?host=${encodeURIComponent(hostHeader.toLowerCase())}`
+  );
+  resolveStatus = res.status;
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    resolveJson = await res.json();
+  } else {
+    resolveText = await res.text();
+  }
+} catch (e) {
+  resolveText = `resolve fetch error: ${(e as any)?.message || String(e)}`;
+}
+
+let catalogStatus = 0;
+let catalogPreview = "";
+if (resolveJson?.stripe_account_id) {
+  try {
+    const c = await fetch(
+      `${import.meta.env.PUBLIC_API_BASE}/catalog.json?account=${resolveJson.stripe_account_id}`
+    );
+    catalogStatus = c.status;
+    catalogPreview = (await c.text()).slice(0, 500);
+  } catch (e) {
+    catalogPreview = `catalog fetch error: ${(e as any)?.message || String(e)}`;
+  }
+}
+---
+
+<html lang="fr">
+  <head><meta charset="utf-8" /><title>__diag</title></head>
+  <body>
+    <h1>__diag (Astro SSR)</h1>
+    <ul>
+      <li>
+        <strong>x-original-host</strong>: {
+          Astro.request.headers.get("x-original-host") || "(none)"
+        }
+      </li>
+      <li>
+        <strong>host</strong>: {Astro.request.headers.get("host") || "(none)"}
+      </li>
+      <li><strong>PUBLIC_API_BASE</strong>: {base}</li>
+    </ul>
+
+    <h2>resolve tenant</h2>
+    <p><strong>status:</strong> {resolveStatus}</p>
+    {
+      resolveJson ? (
+        <pre>{JSON.stringify(resolveJson, null, 2)}</pre>
+      ) : (
+        <pre>{resolveText || "(no body)"}</pre>
+      )
+    }
+
+    {
+      resolveJson?.stripe_account_id && (
+        <>
+          <h2>catalog.json (preview)</h2>
+          <p>
+            <strong>status:</strong> {catalogStatus}
+          </p>
+          <pre>{catalogPreview}</pre>
+        </>
+      )
+    }
+  </body>
+</html>
