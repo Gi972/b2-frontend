@@ -46,6 +46,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
 
     context.locals.tenant = await res.json();
+
+    console.log("Tenant resolution result:", context.locals.tenant);
+
     return next();
   } catch (err: any) {
     return new Response(`Middleware error: ${err?.message || String(err)}`, {
