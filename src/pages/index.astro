@@ -1,11 +1,48 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+const host = Astro.request.headers.get("host")?.toLowerCase() || "";
+const apiBase =
+  import.meta.env.PUBLIC_API_BASE || "https://api.demartechnology.com";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+// Résoudre le tenant côté backend
+const res = await fetch(
+  `${apiBase}/tenants/resolve?host=${encodeURIComponent(host)}`
+);
+if (!res.ok) {
+  throw new Error(`Tenant not found for host ${host}`);
+}
+const tenant = await res.json();
+//const tenant = Astro.locals.tenant
+const acct = tenant.stripe_account_id;
+
+// Charger le catalog du marchand
+const catRes = await fetch(`${apiBase}/catalog.json?account=${acct}`);
+if (!catRes.ok) {
+  throw new Error("Failed to load catalog");
+}
+const catalog = await catRes.json();
+const products = catalog.products || [];
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<html lang="fr">
+  <head><meta charset="utf-8" /><title>{tenant.slug} – Boutique</title></head>
+  <body>
+    <h1>Boutique de {tenant.slug}</h1>
+    <ul>
+      {
+        products.map((p: any) => (
+          <li>
+            <>
+              <strong>{p.name}</strong>
+              <br />
+            </>
+            {p.images?.[0] && (
+              <img src={p.images[0]} alt={p.name} width="150" />
+            )}
+            <br />
+            {p.description}
+          </li>
+        ))
+      }
+    </ul>
+  </body>
+</html>
